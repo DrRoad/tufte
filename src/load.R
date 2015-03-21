@@ -9,7 +9,7 @@ weather_15yr_data <- read.csv("ncdc_livermore_15yr_weather.csv", stringsAsFactor
 # convert all column names into lowercase (for convenience)
 colnames(weather_15yr_data) <- tolower(names(weather_15yr_data))
 
-# Create a dataframe containing data related only to temperature measurements
+# Create a dataframe containing data related only to temperature measurements; ignore other data
 all_temps_15yrs <- weather_15yr_data %>%
         select(date,
                tmax, measurement.flag.5, quality.flag.5, source.flag.5,
