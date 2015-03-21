@@ -2,7 +2,6 @@
 
 # Preprocessing and summarizing data
 library(dplyr)
-library(tidyr)
 
 # Visualization development
 library(ggplot2)
@@ -287,7 +286,7 @@ p <- p +
 
 print(p)
 
-#ggsave(file="dublin2014temps.svg", plot=last_plot())
+ggsave(file="dublin2014temps.png", plot=last_plot())
 
 
 
