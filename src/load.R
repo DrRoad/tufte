@@ -31,6 +31,6 @@ day <- all_dates$mday
 all_temps_15yrs <- subset(all_temps_15yrs, select=-date)    # drop date column
 all_temps_15yrs <- cbind(year, month, day, all_temps_15yrs) # Add back the 'split' date column
 
-# Save the data into a file. Data in this file will be cleaned and used for visualization
+# Save the data into a file. Data in this file will be used for visualization
 write.csv(all_temps_15yrs, file="livermore_15yr_temps.csv", row.names=FALSE)
 
