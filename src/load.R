@@ -1,15 +1,19 @@
 #!/usr/bin/env Rscript
 
+# Preprocessing and summarizing data
+library(dplyr)
+
 # Load the NCDC 15-year (2000 Jan - 2014 Dec) Livermore (California) Airport daily weather
 weather_15yr_data <- read.csv("ncdc_livermore_15yr_weather.csv", stringsAsFactors=FALSE, sep=",")
 
 # convert all column names into lowercase (for convenience)
 colnames(weather_15yr_data) <- tolower(names(weather_15yr_data))
 
-# Extract the relevant data columns -- all columns related to temperature
-temp_data_cols <- c("date", "tmax", "measurement.flag.5", "quality.flag.5", "source.flag.5",
-                            "tmin", "measurement.flag.6", "quality.flag.6", "source.flag.6" )
-all_temps_15yrs <- weather_15yr_data[, temp_data_cols ]
+# Create a dataframe containing data related only to temperature measurements
+all_temps_15yrs <- weather_15yr_data %>%
+        select(date,
+               tmax, measurement.flag.5, quality.flag.5, source.flag.5,
+               tmin, measurement.flag.6, quality.flag.6, source.flag.6)
 
 # Convert date into three columns - year, month, day
 # The date in the raw data file is a string in the format YYYYMMDD
@@ -29,5 +33,4 @@ all_temps_15yrs <- cbind(year, month, day, all_temps_15yrs) # Add back the 'spli
 
 # Save the data into a file. Data in this file will be cleaned and used for visualization
 write.csv(all_temps_15yrs, file="livermore_15yr_temps.csv", row.names=FALSE)
-
 
