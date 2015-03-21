@@ -2,7 +2,6 @@
 
 # Preprocessing and summarizing data
 library(dplyr)
-library(tidyr)
 
 # Visualization development
 library(ggplot2)
