@@ -17,12 +17,6 @@ library(grid)
 # Load 15 years temperature data
 all_temps_15yrs <- read.csv("livermore_15yr_temps.csv", stringsAsFactors=FALSE, sep=",")
 
-# Create a dataframe containing data related only to temperature readings
-#all_temps_15yrs <- all_weather_15yrs %>%
-#        select(year, month, day,
-#               tmax, measurement.flag.5, quality.flag.5, source.flag.5,
-#               tmin, measurement.flag.6, quality.flag.6, source.flag.6)
-
 # Raw data temps are in Celsius degrees to tenths. Convert to Fahrenheit and scale for tenths
 all_temps_15yrs <- all_temps_15yrs %>%
         filter(tmax != -9999 &
