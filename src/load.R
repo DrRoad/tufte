@@ -12,8 +12,8 @@ colnames(weather_15yr_data) <- tolower(names(weather_15yr_data))
 # Create a dataframe containing data related only to temperature measurements; ignore other data
 all_temps_15yrs <- weather_15yr_data %>%
         select(date,
-               tmax, measurement.flag.5, quality.flag.5, source.flag.5,
-               tmin, measurement.flag.6, quality.flag.6, source.flag.6)
+               tmax, measurement.flag.4, quality.flag.4, source.flag.4,
+               tmin, measurement.flag.5, quality.flag.5, source.flag.5)
 
 # Convert date into three columns - year, month, day
 # The date in the raw data file is a string in the format YYYYMMDD
