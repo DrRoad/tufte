@@ -17,14 +17,32 @@ library(grid)
 # Load 15 years temperature data
 all_temps_15yrs <- read.csv("livermore_15yr_temps.csv", stringsAsFactors=FALSE, sep=",")
 
+# Clean the data: drop records with invalid temp values, and missing or invalid
+#  measurement, quality or source flags.
+#
+#  NOTES: 1. The raw CSV file shows white space for Tmax and Tmin Measurement flags
+#            but when read into the dataframe those flags read NA. The NA values are
+#            treated as Normal in this analysis
+#         2. The raw CSV file shows white space for Tmax and Tmin Quality flags but
+#            when read into the dataframe the Tmax Quality flags show up as NA, while Tmin
+#            Quality flags show up as " " (white space), as expected. 
+all_temps_15yrs <- all_temps_15yrs %>%
+        filter(tmax != -9999                &   # drop missing max temp identified by -9999
+               tmin != -9999                &   # drop missing min temp identified by -9999
+               is.na(measurement.flag.4)    &   # keep tmax data with no special measurement info
+               is.na(measurement.flag.5)    &   # keep tmin data with no special measurement info
+               is.na(quality.flag.4)        &   # keep tmax data that did not fail quality check
+               quality.flag.5 == " "        &   # keep tmin data that did not fail quality check
+               source.flag.4 != " "         &   # drop tmax data with no source (blank)
+               !is.na(source.flag.4)        &   #  or NA                              
+               source.flag.5 != " "         &   # drop tmin data with no source (blank)
+               !is.na(source.flag.5))           #  or NA
+
 # Raw data temps are in Celsius degrees to tenths. Convert to Fahrenheit and scale for tenths
 all_temps_15yrs <- all_temps_15yrs %>%
-        filter(tmax != -9999 &
-               tmin != -9999) %>%               # drop missing max temp identified by -9999
         mutate(tmaxF = tmax*0.18 + 32,          # convert to Fahrenheit (F = C*9/5 + 32)
-               tminF = tmin*0.18 + 32) %>%      # note: temps are also being converted from tenths
+               tminF = tmin*0.18 + 32)          # note: temps are also being converted from tenths
                                                 #       to real (normal) values
-        ungroup()
 
 # Compute the average per year min and max temps
 avg_temps_each_year <- all_temps_15yrs %>%
@@ -39,7 +57,7 @@ avg_min_per_year <- arrange(avg_temps_each_year, desc(avg_min))
 print(avg_max_per_year[,c("year","avg_max")])
 print(avg_min_per_year[,c("year","avg_min")])
 
-# create a dataframe that represents all 15 years from 2000-2014 historical temperature data
+# create a dataframe that represents 14 years of historical temp data from 2000-2013
 Past <- all_temps_15yrs %>%
         group_by(year, month) %>%
         arrange(day) %>%
@@ -47,31 +65,7 @@ Past <- all_temps_15yrs %>%
         group_by(year) %>%
         mutate(newDay = seq(1, length(day))) %>%    # label days as 1:365 (will represent x-axis)
         ungroup() %>%
-        filter(tmax != -9999                &   # drop missing max temp identified by -9999
-               tmin != -9999                &   # drop missing min temp identified by -9999
-               quality.flag.5 == " "        &   # filter tmax data that failed quality check
-               is.na(quality.flag.6)        &   # filter tmin data that failed quality check
-               year != 2014) %>%                # filter out 2014 data
-        group_by(newDay) %>%
-        mutate(upper = max(tmaxF),              # identify same day highest max temp from all years
-               lower = min(tminF),              # identify same day lowest min temp from all years
-               avg_upper = mean(tmaxF),         # compute same day average max temp from all years
-               avg_lower = mean(tminF)) %>%     # compute same day average min temp from all years
-        ungroup()
-
-# create a dataframe that represents 2000-2013 historical temperature data
-Past <- all_temps_15yrs %>%
-        group_by(year, month) %>%
-        arrange(day) %>%
-        ungroup() %>%
-        group_by(year) %>%
-        mutate(newDay = seq(1, length(day))) %>%    # label days as 1:365 (will represent x-axis)
-        ungroup() %>%
-        filter(tmax != -9999                &   # drop missing max temp identified by -9999
-               tmin != -9999                &   # drop missing min temp identified by -9999
-               quality.flag.5 == " "        &   # filter tmax data that failed quality check
-               is.na(quality.flag.6)        &   # filter tmin data that failed quality check
-               year != 2014) %>%                # filter out 2014 data
+        filter(year != 2014) %>%                # filter out 2014 data
         group_by(newDay) %>%
         mutate(upper = max(tmaxF),              # identify same day highest max temp from all years
                lower = min(tminF),              # identify same day lowest min temp from all years
@@ -87,27 +81,23 @@ Present <- all_temps_15yrs %>%
         group_by(year) %>%
         mutate(newDay = seq(1, length(day))) %>%    # label days as 1:365 (will represent x-axis)
         ungroup() %>%
-        filter(tmax != -9999                &   # drop missing max temp identified by -9999
-               tmin != -9999                &   # drop missing min temp identified by -9999
-               quality.flag.5 == " "        &   # filter tmax data that failed quality check
-               is.na(quality.flag.6)        &   # filter tmin data that failed quality check
-               year == 2014)                    # filter out all years except 2014 data
+        filter(year == 2014)                    # filter out all years except 2014 data
 
 # create dataframe that represents the lowest same-day temperature from years 2000-2013
 PastLows <- Past %>%
         group_by(newDay) %>%
         summarise(Pastlow = min(tminF)) # identify lowest same-day temp between 2000 and 2013
 
+# create dataframe that represents the highesit same-day temperature from years 2000-2013
+PastHighs <- Past %>%
+        group_by(newDay) %>%
+        summarise(Pasthigh = max(tmaxF)) # identify highest same-day temps between 2000 and 2013
+
 # create dataframe that identifies days in 2014 when temps were lower than in all previous 14 years
 PresentLows <- Present %>%
         left_join(PastLows) %>%         # merge historical lows to 2014 low temp data
         mutate(record = ifelse(tminF<Pastlow, "Y", "N")) %>% # current year was a record low?
         filter(record == "Y")           # filter for 2014 record low days
-
-# create dataframe that represents the highesit same-day temperature from years 2000-2013
-PastHighs <- Past %>%
-        group_by(newDay) %>%
-        summarise(Pasthigh = max(tmaxF)) # identify highest same-day temps between 2000 and 2013
 
 # create dataframe that identifies days in 2014 when temps were higher than in all previous 14 years
 PresentHighs <- Present %>%
@@ -127,8 +117,6 @@ degree_format <- function(x, ...) {
 # create y-axis variable
 yaxis_temps <- degree_format(seq(0, 120, by=10))
 
-# create a dataframe to represent legend for 2014 temperatures
-legend_data <- data.frame(x=seq(175, 182), y=rnorm(8, 15, 2)) 
 
 #   **** Visualization Steps ****
 # Step 1: create the canvas for the plot. Also plot the background lowest, highest 2000-2013 temps
@@ -137,7 +125,6 @@ p <- ggplot(Past, aes(newDay, tmaxF)) +
               panel.grid.minor = element_blank(),
               panel.grid.major = element_blank(),
               panel.border = element_blank(),
-              #panel.background = element_rect(fill = "#DEBBA8"),
               panel.background = element_rect(fill = "seashell2"),
               axis.ticks = element_blank(),
               #axis.text = element_blank(),  
@@ -145,7 +132,6 @@ p <- ggplot(Past, aes(newDay, tmaxF)) +
         geom_linerange(Past,
                        mapping=aes(x=newDay, ymin=lower, ymax=upper),
                        size=0.8, colour = "#CAA586", alpha=.6)
-
 #print(p)
 
 
@@ -155,22 +141,18 @@ p <- p +
                        mapping=aes(x=newDay, ymin=avg_lower, ymax=avg_upper),
                        size=0.8,
                        colour = "#A57E69")
-
 #print(p)
 
 
-# Step 3: Plot 2014 high and low temps. Also add the y-axis border
-#p <- p + 
+# Step 3: Plot 2014 high and low temps
 p <- p + 
         geom_linerange(Present, mapping=aes(x=newDay, ymin=tminF, ymax=tmaxF), size=0.8, colour = "#4A2123")
-        geom_vline(xintercept = 0, colour = "wheat4", linetype=1, size=1)
-
 #print(p)
 
 
-# Step 4: Add x-axis grid lines
+# Step 4: Add the y-axis border and the x-axis grid lines
 p <- p + 
-
+        geom_vline(xintercept = 0, colour = "wheat4", linetype=1, size=1) +
         geom_hline(yintercept = 0, colour = "ivory2", linetype=1, size=.1) +
         geom_hline(yintercept = 10, colour = "ivory2", linetype=1, size=.1) +
         geom_hline(yintercept = 20, colour = "ivory2", linetype=1, size=.1) +
@@ -184,7 +166,6 @@ p <- p +
         geom_hline(yintercept = 100, colour = "ivory2", linetype=1, size=.1) +
         geom_hline(yintercept = 110, colour = "ivory2", linetype=1, size=.1) +
         geom_hline(yintercept = 120, colour = "ivory2", linetype=1, size=.1)
-
 #print(p)
 
 
@@ -202,7 +183,6 @@ p <- p +
         geom_vline(xintercept = 304, colour = "wheat4", linetype=3, size=.4) +
         geom_vline(xintercept = 334, colour = "wheat4", linetype=3, size=.4) +
         geom_vline(xintercept = 365, colour = "wheat4", linetype=3, size=.4) 
-
 #print(p)
 
 # Step 6: Add labels to the x and y axes
@@ -214,21 +194,18 @@ p <- p +
                            labels = c("January", "February", "March", "April",
                                       "May", "June", "July", "August", "September",
                                       "October", "November", "December"))
-
 #print(p)
 
-# Step 7: Add the 2014 high and low temps
+# Step 7: Add points to mark the 2014 record high and low temps
 p <- p +
         geom_point(data=PresentLows, aes(x=newDay, y=tminF), colour="blue3") +
         geom_point(data=PresentHighs, aes(x=newDay, y=tmaxF), colour="firebrick3")
-
 #print(p)
 
 # Step 8: Add title to plot
 p <- p +
         ggtitle("Dublin (California) Weather in 2014") +
         theme(plot.title=element_text(face="bold",hjust=.012,vjust=.8,colour="gray30",size=18))
-
 #print(p)
 
 # Step 9: Add explanation text under the plot title
@@ -246,9 +223,10 @@ grob2 = grobTree(textGrob(paste("Bars represent range between daily high and low
                           gp=gpar(col="gray30", fontsize=8.5)))
 
 p <- p + annotation_custom(grob2)
+#print(p)
 
 # Step 10: Add annotation for points representing the record high 2014 temperatures
-#          Note: There were no record lows in 2014, it was awarm year!
+#          Note: There were no record lows in 2014, it was the warmest year of the 15-yr period!
 
 grob3 = grobTree(textGrob(paste("In 2014 there were 60 days that were\n",
                                  "hottest since 2000\n",sep=""),
@@ -259,6 +237,7 @@ p <- p + annotation_custom(grob3)
 
 p <- p +
         annotate("segment", x = 257, xend = 263, y = 99, yend = 108, colour = "firebrick3") 
+#print(p)
 
 # Step 11: Add legend to explain difference between the different data point layers
 
@@ -272,7 +251,6 @@ p <- p +
         annotate("segment", x = 183, xend = 185, y = 13.25, yend = 13.25, colour = "#4A2123", size=.3) +
         annotate("segment", x = 183, xend = 185, y = 21.75, yend = 21.75, colour = "#4A2123", size=.3) +
         annotate("text", x = 165, y = 14.75, label = "NORMAL RANGE", size=2.1, colour="gray30") +
-#        annotate("text", x = 196, y = 16.75, label = "2014 TEMPERATURE", size=2, colour="gray30") +
         annotate("text", x = 170, y = 25, label = "RECORD HIGH", size=2.1, colour="gray30") +
         annotate("text", x = 170, y = 5, label = "RECORD LOW", size=2.1, colour="gray30") +
         annotate("text", x = 195, y = 21.75, label = "ACTUAL HIGH", size=2.1, colour="gray30") +
